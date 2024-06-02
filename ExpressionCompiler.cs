@@ -52,7 +52,7 @@ static class ExpressionCompiler{
                 return new ExpressionInfo([new ILInstruction(Opcode.i32_const, int.Parse(tokens[0].value))], "int");
             }
             else if(tokens[0].type == TokenType.Varname){
-                return new ExpressionInfo([new ILInstruction(Opcode.get_local, tokens[0].value)], compiler.types[tokens[0].value]);
+                return new ExpressionInfo([new ILInstruction(Opcode.get_local, tokens[0].value)], compiler.locals[tokens[0].value]);
             }
             else{
                 throw new Exception("Unexpected tokentype: "+tokens[0].type);

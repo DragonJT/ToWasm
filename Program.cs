@@ -1,12 +1,12 @@
 ﻿
 class Compiler(string returnType){
     public string returnType = returnType;
-    public Dictionary<string, string> types = [];
+    public Dictionary<string, string> locals = [];
 }
 
 static class Program{
     public static void Main(){
-        var tokenizer = new Tokenizer("var x = 10; return x + 6 * 1.5;");
+        var tokenizer = new Tokenizer("var x = 2.5; return x + 6 * x;");
         var tokens = tokenizer.Tokenize();
         var compiler = new Compiler("float");
         var il = new IL();

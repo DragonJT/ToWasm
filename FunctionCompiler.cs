@@ -13,7 +13,7 @@ static class FunctionCompiler{
                 statementTokens.Add(t);
             }
         }
-        var locals = compiler.types.Select(t=>new ILVariable(TypeCompiler.StringToValtype(t.Value), t.Key)).ToArray();
+        var locals = compiler.locals.Select(t=>new ILVariable(TypeCompiler.StringToValtype(t.Value), t.Key)).ToArray();
         return new ILFunction(true, "Run", Valtype.F32, [], locals, [..instructions]);
     }
 }
