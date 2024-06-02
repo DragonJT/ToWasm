@@ -4,7 +4,7 @@ class ExpressionInfo(ILInstruction[] instructions, string type){
     public string type = type;
 }
 
-static class ExpressionParser{
+static class ExpressionCompiler{
 
     static int FindSplit(Token[] tokens, string[] ops){
         for(var i=tokens.Length-1;i>=0;i--){
@@ -41,26 +41,7 @@ static class ExpressionParser{
         }
     }
 
-    static string CalcType(string left, string right){
-        if(left == right){
-            return left;
-        }
-        else{
-            if(left == "int" && right == "float" || left == "float" && right == "int"){
-                return "float";
-            }
-            throw new Exception("Type mismatch: "+left+" - "+right);
-        }
-    }
-
-    static ILInstruction[] AddConvertInstructions(ILInstruction[] instructions, string oldType, string newType){
-        if(oldType == "int" && newType == "float"){
-            return [..instructions, new ILInstruction(Opcode.f32_convert_i32_s)];
-        }
-        throw new Exception("Unexpected old and new types");
-    }
-
-    public static ExpressionInfo Parse(Token[] tokens, Compiler compiler){
+    public static ExpressionInfo Compile(Token[] tokens, Compiler compiler){
         string[][] operators = [["+", "-"], ["*", "/"]];
 
         if(tokens.Length == 1){
@@ -70,6 +51,9 @@ static class ExpressionParser{
                 }
                 return new ExpressionInfo([new ILInstruction(Opcode.i32_const, int.Parse(tokens[0].value))], "int");
             }
+            else if(tokens[0].type == TokenType.Varname){
+                return new ExpressionInfo([new ILInstruction(Opcode.get_local, tokens[0].value)], compiler.types[tokens[0].value]);
+            }
             else{
                 throw new Exception("Unexpected tokentype: "+tokens[0].type);
             }
@@ -78,15 +62,12 @@ static class ExpressionParser{
         foreach(var ops in operators){
             var split = FindSplit(tokens, ops);
             if(split>=0){
-                var left = Parse(tokens[0..split], compiler);
-                var right = Parse(tokens[(split+1)..], compiler);
-                var type = CalcType(left.type, right.type);
-                if(left.type != type){
-                    left.instructions = AddConvertInstructions(left.instructions, left.type, type);
-                }
-                if(right.type != type){
-                    right.instructions = AddConvertInstructions(right.instructions, right.type, type);
-                }
+                var left = Compile(tokens[0..split], compiler);
+                var right = Compile(tokens[(split+1)..], compiler);
+                var type = TypeCompiler.CalcType(left.type, right.type);
+                left.instructions = TypeCompiler.AddConvertInstructions(left.instructions, left.type, type);
+                right.instructions = TypeCompiler.AddConvertInstructions(right.instructions, right.type, type);
+
                 ILInstruction[] instructions = [..left.instructions, ..right.instructions, new ILInstruction(GetOpcode(tokens[split].value, type))];
                 return new ExpressionInfo(instructions, type);
             }

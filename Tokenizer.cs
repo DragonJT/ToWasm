@@ -2,6 +2,8 @@ enum TokenType{
     Varname,
     Number,
     Punctuation,
+    Return,
+    Var,
 }
 
 class Token(string value, TokenType type){
@@ -29,6 +31,15 @@ class Tokenizer(string code){
         return IsCharacter(c) || IsDigit(c);
     }
 
+    static Token VarnameToken(string value){
+        return value switch
+        {
+            "var" => new Token(value, TokenType.Var),
+            "return" => new Token(value, TokenType.Return),
+            _ => new Token(value, TokenType.Varname),
+        };
+    }
+
     public List<Token> Tokenize(){
         List<Token> tokens = [];
         Start:
@@ -41,13 +52,13 @@ class Tokenizer(string code){
             StartVarname:
             index++;
             if(index>=code.Length){
-                tokens.Add(new Token(code[start..index], TokenType.Varname));
+                tokens.Add(VarnameToken(code[start..index]));
                 return tokens;
             }
             if(IsAlphaNumeric(code[index])){
                 goto StartVarname;
             }
-            tokens.Add(new Token(code[start..index], TokenType.Varname));
+            tokens.Add(VarnameToken(code[start..index]));
             goto Start;
         }
         else if(IsDigit(c)){
