@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ToWasm", "ToWasm.csproj", "{EA2F9F33-FBAE-42AA-AFB0-69B3160817EE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EA2F9F33-FBAE-42AA-AFB0-69B3160817EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA2F9F33-FBAE-42AA-AFB0-69B3160817EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA2F9F33-FBAE-42AA-AFB0-69B3160817EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA2F9F33-FBAE-42AA-AFB0-69B3160817EE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6986BABB-D2F2-4FB9-A111-CF00ABAFED11}
+	EndGlobalSection
+EndGlobal
