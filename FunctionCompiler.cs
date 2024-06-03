@@ -5,12 +5,14 @@ class ExpressionInfo(ILInstruction[] instructions, string type){
 }
 
 class FunctionCompiler{
-    public string returnType;
-    public string name;
-    public Dictionary<string, string> locals = [];
+    readonly Compiler compiler;
+    public readonly string returnType;
+    public readonly string name;
+    readonly Dictionary<string, string> locals = [];
     readonly List<Token> bodyTokens;
 
-    public FunctionCompiler(Token[] tokens){
+    public FunctionCompiler(Compiler compiler, Token[] tokens){
+        this.compiler = compiler;
         returnType = tokens[0].value;
         name = tokens[1].value;
         bodyTokens = new Tokenizer(tokens[3].value[1..^1]).Tokenize();
@@ -66,6 +68,12 @@ class FunctionCompiler{
             }
             else{
                 throw new Exception("Unexpected tokentype: "+tokens[0].type);
+            }
+        }
+        else if(tokens.Length == 2){
+            if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Parenthesis){
+                var function = compiler.FindFunction(tokens[0].value);
+                return new ExpressionInfo([new ILInstruction(Opcode.call, function.name)], function.returnType);
             }
         }
 
