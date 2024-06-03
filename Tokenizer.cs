@@ -4,6 +4,9 @@ enum TokenType{
     Punctuation,
     Return,
     Var,
+    Parenthesis,
+    Curly,
+    Square,
 }
 
 class Token(string value, TokenType type){
@@ -40,6 +43,23 @@ class Tokenizer(string code){
         };
     }
 
+    void ReadOpenClose(char open, char close){
+        var depth = 1;
+        Start:
+        index++;
+        if(code[index] == open){
+            depth++;
+        }
+        else if(code[index] == close){
+            depth--;
+            if(depth<=0){
+                index++;
+                return;
+            }
+        }
+        goto Start;
+    }
+
     public List<Token> Tokenize(){
         List<Token> tokens = [];
         Start:
@@ -73,6 +93,24 @@ class Tokenizer(string code){
                 goto StartNumber;
             }
             tokens.Add(new Token(code[start..index], TokenType.Number));
+            goto Start;
+        }
+        else if(c == '('){
+            var start = index;
+            ReadOpenClose('(', ')');
+            tokens.Add(new Token(code[start..index], TokenType.Parenthesis));
+            goto Start;
+        }
+        else if(c == '{'){
+           var start = index;
+            ReadOpenClose('{', '}');
+            tokens.Add(new Token(code[start..index], TokenType.Curly));
+            goto Start;
+        }
+        else if(c == '['){
+           var start = index;
+            ReadOpenClose('[', ']');
+            tokens.Add(new Token(code[start..index], TokenType.Square));
             goto Start;
         }
         else if(IsWhitespace(c)){
