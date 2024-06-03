@@ -4,9 +4,17 @@ class ExpressionInfo(ILInstruction[] instructions, string type){
     public string type = type;
 }
 
-class FunctionCompiler(string returnType){
-    public string returnType = returnType;
+class FunctionCompiler{
+    public string returnType;
+    public string name;
     public Dictionary<string, string> locals = [];
+    readonly List<Token> bodyTokens;
+
+    public FunctionCompiler(Token[] tokens){
+        returnType = tokens[0].value;
+        name = tokens[1].value;
+        bodyTokens = new Tokenizer(tokens[3].value[1..^1]).Tokenize();
+    }
 
     static int FindSplit(Token[] tokens, string[] ops){
         for(var i=tokens.Length-1;i>=0;i--){
@@ -102,10 +110,10 @@ class FunctionCompiler(string returnType){
         throw new Exception("Unexpected statement");
     }
 
-    public ILFunction Compile(List<Token> tokens){
+    public ILFunction Compile(){
         List<Token> statementTokens = [];
         List<ILInstruction> instructions = [];
-        foreach(var t in tokens){
+        foreach(var t in bodyTokens){
             if(t.type == TokenType.Punctuation && t.value == ";"){
                 instructions.AddRange(CompileStatement([..statementTokens]));
                 statementTokens.Clear();
@@ -115,6 +123,6 @@ class FunctionCompiler(string returnType){
             }
         }
         var l = locals.Select(t=>new ILVariable(TypeCompiler.StringToValtype(t.Value), t.Key)).ToArray();
-        return new ILFunction(true, "Run", Valtype.F32, [], l, [..instructions]);
+        return new ILFunction(true, name, TypeCompiler.StringToValtype(returnType), [], l, [..instructions]);
     }
 }
