@@ -1,8 +1,13 @@
 class Compiler{
     readonly List<FunctionCompiler> functions = [];
 
-    public FunctionCompiler FindFunction(string name){
-        return functions.First(f=>f.name == name);
+    public FunctionCompiler FindFunction(string name, string[] parameterTypes){
+        foreach(var f in functions){
+            if(f.name == name && f.MatchingParameterTypes(parameterTypes)){
+                return f;
+            }
+        }
+        throw new Exception("Cant find function with name: "+name);
     }
 
     public IL Compile(List<Token> tokens){

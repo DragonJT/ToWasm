@@ -4,14 +4,36 @@ enum TokenType{
     Punctuation,
     Return,
     Var,
-    Parenthesis,
+    Parentheses,
     Curly,
     Square,
 }
 
-class Token(string value, TokenType type){
+class Token(string value, TokenType type, int start){
     public string value = value;
     public TokenType type = type;
+    public int start = start;
+
+    public string GetVarnameValue(){
+        if(type == TokenType.Varname){
+            return value;
+        }
+        throw new Exception("Expecting varname");
+    }
+
+    public List<Token> GetCurlyTokens(){
+        if(type == TokenType.Curly){
+            return new Tokenizer(value[1..^1]).Tokenize(start+1);
+        }
+        throw new Exception("Expecting curly");
+    }
+
+    public List<Token> GetParenthesesTokens(){
+        if(type == TokenType.Parentheses){
+            return new Tokenizer(value[1..^1]).Tokenize(start+1);
+        }
+        throw new Exception("Expecting parentheses");
+    }
 }
 
 class Tokenizer(string code){
@@ -34,12 +56,12 @@ class Tokenizer(string code){
         return IsCharacter(c) || IsDigit(c);
     }
 
-    static Token VarnameToken(string value){
+    static Token VarnameToken(string value, int start){
         return value switch
         {
-            "var" => new Token(value, TokenType.Var),
-            "return" => new Token(value, TokenType.Return),
-            _ => new Token(value, TokenType.Varname),
+            "var" => new Token(value, TokenType.Var, start),
+            "return" => new Token(value, TokenType.Return, start),
+            _ => new Token(value, TokenType.Varname, start),
         };
     }
 
@@ -60,7 +82,7 @@ class Tokenizer(string code){
         goto Start;
     }
 
-    public List<Token> Tokenize(){
+    public List<Token> Tokenize(int offset){
         List<Token> tokens = [];
         Start:
         if(index >= code.Length){
@@ -72,13 +94,13 @@ class Tokenizer(string code){
             StartVarname:
             index++;
             if(index>=code.Length){
-                tokens.Add(VarnameToken(code[start..index]));
+                tokens.Add(VarnameToken(code[start..index], start+offset));
                 return tokens;
             }
             if(IsAlphaNumeric(code[index])){
                 goto StartVarname;
             }
-            tokens.Add(VarnameToken(code[start..index]));
+            tokens.Add(VarnameToken(code[start..index], start+offset));
             goto Start;
         }
         else if(IsDigit(c)){
@@ -86,31 +108,31 @@ class Tokenizer(string code){
             StartNumber:
             index++;
             if(index >= code.Length){
-                tokens.Add(new Token(code[start..index], TokenType.Number));
+                tokens.Add(new Token(code[start..index], TokenType.Number, start+offset));
                 return tokens;
             }
             if(IsDigit(code[index]) || code[index]=='.'){
                 goto StartNumber;
             }
-            tokens.Add(new Token(code[start..index], TokenType.Number));
+            tokens.Add(new Token(code[start..index], TokenType.Number, start+offset));
             goto Start;
         }
         else if(c == '('){
             var start = index;
             ReadOpenClose('(', ')');
-            tokens.Add(new Token(code[start..index], TokenType.Parenthesis));
+            tokens.Add(new Token(code[start..index], TokenType.Parentheses, start+offset));
             goto Start;
         }
         else if(c == '{'){
            var start = index;
             ReadOpenClose('{', '}');
-            tokens.Add(new Token(code[start..index], TokenType.Curly));
+            tokens.Add(new Token(code[start..index], TokenType.Curly, start+offset));
             goto Start;
         }
         else if(c == '['){
            var start = index;
             ReadOpenClose('[', ']');
-            tokens.Add(new Token(code[start..index], TokenType.Square));
+            tokens.Add(new Token(code[start..index], TokenType.Square, start+offset));
             goto Start;
         }
         else if(IsWhitespace(c)){
@@ -118,8 +140,8 @@ class Tokenizer(string code){
             goto Start;
         }
         else{
+            tokens.Add(new Token(c.ToString(), TokenType.Punctuation, index+offset));
             index++;
-            tokens.Add(new Token(c.ToString(), TokenType.Punctuation));
             goto Start;
         }
     }

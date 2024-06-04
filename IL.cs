@@ -60,6 +60,15 @@ class IL{
         return (uint)functions.First(f=>f.name == name).id;
     }
 
+    public void Print(){
+        foreach(var f in functions){
+            Console.WriteLine(f.name);
+            foreach(var i in f.instructions){
+                Console.WriteLine(i.opcode+" - "+i.value);
+            }
+        }
+    }
+
     public void Emit(){
         var fid = 0;
         foreach(var f in importFunctions){
