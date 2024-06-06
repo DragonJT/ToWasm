@@ -4,6 +4,7 @@ enum TokenType{
     Punctuation,
     Return,
     Var,
+    Import,
     Parentheses,
     Curly,
     Square,
@@ -24,6 +25,13 @@ class Token(string value, TokenType type, int start){
     public List<Token> GetCurlyTokens(){
         if(type == TokenType.Curly){
             return new Tokenizer(value[1..^1]).Tokenize(start+1);
+        }
+        throw new Exception("Expecting curly");
+    }
+
+    public string GetJavascript(){
+        if(type == TokenType.Curly){
+            return value[1..^1];
         }
         throw new Exception("Expecting curly");
     }
@@ -61,6 +69,7 @@ class Tokenizer(string code){
         {
             "var" => new Token(value, TokenType.Var, start),
             "return" => new Token(value, TokenType.Return, start),
+            "import" => new Token(value, TokenType.Import, start),
             _ => new Token(value, TokenType.Varname, start),
         };
     }

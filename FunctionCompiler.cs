@@ -9,46 +9,16 @@ class Variable(string type, string name){
     public string name = name;
 }
 
-class FunctionCompiler{
+class FunctionCompiler: IFunctionCompiler{
     readonly Compiler compiler;
-    public readonly string returnType;
-    public readonly string name;
-    readonly Variable[] parameters;
+    public string ReturnType {get;}
+    public string Name {get;}
+    public Variable[] Parameters {get;}
     readonly List<Variable> locals = [];
     readonly List<Token> bodyTokens;
 
-    public bool MatchingParameterTypes(string[] parameterTypes){
-        if(parameters.Length != parameterTypes.Length){
-            return false;
-        }
-        for(var i=0;i<parameters.Length;i++){
-            if(!TypeCompiler.ValidFromToType(parameterTypes[i], parameters[i].type)){
-                return false;
-            }
-        }
-        return true;
-    }
-
-    static Token[][] SplitByComma(Token[] tokens){
-        List<Token[]> result = [];
-        List<Token> splitResult = [];
-        foreach(var token in tokens){
-            if(token.type == TokenType.Punctuation && token.value == ","){
-                result.Add([..splitResult]);
-                splitResult.Clear();
-            }
-            else{
-                splitResult.Add(token);
-            }
-        }
-        if(splitResult.Count > 0){
-            result.Add([..splitResult]);
-        }
-        return [..result];
-    }
-
     Variable GetVariable(string name){
-        foreach(var p in parameters){
+        foreach(var p in Parameters){
             if(p.name == name){
                 return p;
             }
@@ -63,11 +33,11 @@ class FunctionCompiler{
 
     public FunctionCompiler(Compiler compiler, Token[] tokens){
         this.compiler = compiler;
-        returnType = tokens[0].GetVarnameValue();
-        name = tokens[1].GetVarnameValue();
+        ReturnType = tokens[0].GetVarnameValue();
+        Name = tokens[1].GetVarnameValue();
         var parametersTokens = tokens[2].GetParenthesesTokens();
-        var splitParametersTokens = SplitByComma([..parametersTokens]);
-        parameters = splitParametersTokens.Select(p=>new Variable(p[0].value, p[1].value)).ToArray();
+        var splitParametersTokens = Compiler.SplitByComma([..parametersTokens]);
+        Parameters = splitParametersTokens.Select(p=>new Variable(p[0].value, p[1].value)).ToArray();
         bodyTokens = tokens[3].GetCurlyTokens();
     }
 
@@ -106,6 +76,18 @@ class FunctionCompiler{
         }
     }
 
+    ExpressionInfo GetInvocationExpression(Token[] tokens){
+        var argsTokens = tokens[1].GetParenthesesTokens();
+        var splitArgsTokens = Compiler.SplitByComma([..argsTokens]);
+        var argExpressions = splitArgsTokens.Select(CompileExpression).ToArray();
+        var function = compiler.FindFunction(tokens[0].value, argExpressions.Select(e=>e.type).ToArray());
+        var instructions = new List<ILInstruction>();
+        for(var i=0;i<function.Parameters.Length;i++){
+            instructions.AddRange(TypeCompiler.AddConvertInstructions(argExpressions[i].instructions, argExpressions[i].type, function.Parameters[i].type));
+        }
+        return new ExpressionInfo([..instructions, new ILInstruction(Opcode.call, function.Name)], function.ReturnType);
+    }
+
     ExpressionInfo CompileExpression(Token[] tokens){
         string[][] operators = [["+", "-"], ["*", "/"]];
 
@@ -125,15 +107,7 @@ class FunctionCompiler{
         }
         else if(tokens.Length == 2){
             if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Parentheses){
-                var argsTokens = tokens[1].GetParenthesesTokens();
-                var splitArgsTokens = SplitByComma([..argsTokens]);
-                var argExpressions = splitArgsTokens.Select(CompileExpression).ToArray();
-                var function = compiler.FindFunction(tokens[0].value, argExpressions.Select(e=>e.type).ToArray());
-                var instructions = new List<ILInstruction>();
-                for(var i=0;i<function.parameters.Length;i++){
-                    instructions.AddRange(TypeCompiler.AddConvertInstructions(argExpressions[i].instructions, argExpressions[i].type, function.parameters[i].type));
-                }
-                return new ExpressionInfo([..instructions, new ILInstruction(Opcode.call, function.name)], function.returnType);
+                return GetInvocationExpression(tokens);
             }
         }
 
@@ -156,14 +130,14 @@ class FunctionCompiler{
     ILInstruction[] CompileStatement(Token[] tokens){
         if(tokens[0].type == TokenType.Return){
             var expressionInfo = CompileExpression(tokens[1..]);
-            if(TypeCompiler.ValidFromToType(expressionInfo.type, returnType!)){
+            if(TypeCompiler.ValidFromToType(expressionInfo.type, ReturnType!)){
                 return [
-                    ..TypeCompiler.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, returnType!),
+                    ..TypeCompiler.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, ReturnType!),
                     new ILInstruction(Opcode.ret)
                 ];
             }
             else{
-                throw new Exception("Return type mismatch: "+expressionInfo.type+" - "+returnType!);
+                throw new Exception("Return type mismatch: "+expressionInfo.type+" - "+ReturnType!);
             }
         }
         else if(tokens[0].type == TokenType.Var){
@@ -174,6 +148,9 @@ class FunctionCompiler{
                 ..expressionInfo.instructions,
                 new ILInstruction(Opcode.set_local, varname),
             ];
+        }
+        else if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Parentheses){
+            return GetInvocationExpression(tokens).instructions;
         }
         throw new Exception("Unexpected statement");
     }
@@ -191,7 +168,7 @@ class FunctionCompiler{
             }
         }
         var ilLocals = locals.Select(l=>new ILVariable(TypeCompiler.StringToValtype(l.type), l.name)).ToArray();
-        var ilParameters = parameters.Select(p=>new ILVariable(TypeCompiler.StringToValtype(p.type), p.name)).ToArray();
-        return new ILFunction(true, name, TypeCompiler.StringToValtype(returnType), ilParameters, ilLocals, [..instructions]);
+        var ilParameters = Parameters.Select(p=>new ILVariable(TypeCompiler.StringToValtype(p.type), p.name)).ToArray();
+        return new ILFunction(true, Name, TypeCompiler.StringToValtype(ReturnType), ilParameters, ilLocals, [..instructions]);
     }
 }
