@@ -1,27 +1,26 @@
 
 interface IFunctionCompiler{
     string Name{get;}
-    string ReturnType {get;}
+    Type ReturnType {get;}
     Variable[] Parameters {get;}
 }
 
 class ImportFunctionCompiler:IFunctionCompiler{
     public string Name {get;}
-    public string ReturnType { get;}
+    public Type ReturnType { get;}
     public Variable[] Parameters {get;}
     public readonly string code;
 
     public ImportFunctionCompiler(Token[] tokens){
-        ReturnType = tokens[1].GetVarnameValue();
+        ReturnType =Type.Parse(tokens[1].GetVarnameValue());
         Name = tokens[2].GetVarnameValue();
         var splitParametersTokens = Compiler.SplitByComma([..tokens[3].GetParenthesesTokens()]).ToArray();
-        Parameters = splitParametersTokens.Select(t=>new Variable(t[0].value, t[1].value)).ToArray();
+        Parameters = splitParametersTokens.Select(t=>new Variable(Type.Parse(t[0].value), t[1].value)).ToArray();
         code = tokens[4].GetJavascript();
     }
 
     public ILImportFunction Compile(){
-        var ilParameters = Parameters.Select(p=>new ILVariable(TypeCompiler.StringToValtype(p.type), p.name)).ToArray();
-        return new ILImportFunction(Name, TypeCompiler.StringToValtype(ReturnType), ilParameters, code);
+        return new ILImportFunction(Name, ReturnType, Parameters, code);
     }
 }
 
@@ -29,13 +28,13 @@ class Compiler{
     readonly List<ImportFunctionCompiler> importFunctions = [];
     readonly List<FunctionCompiler> functions = [];
 
-    static bool MatchingParameterTypes(IFunctionCompiler func, string[] parameterTypes){
+    static bool MatchingParameterTypes(IFunctionCompiler func, Type[] parameterTypes){
         var parameters = func.Parameters;
         if(parameters.Length != parameterTypes.Length){
             return false;
         }
         for(var i=0;i<parameters.Length;i++){
-            if(!TypeCompiler.ValidFromToType(parameterTypes[i], parameters[i].type)){
+            if(!parameterTypes[i].ValidConversionType(parameters[i].type)){
                 return false;
             }
         }
@@ -61,7 +60,7 @@ class Compiler{
     }
 
 
-    public IFunctionCompiler FindFunction(string name, string[] parameterTypes){
+    public IFunctionCompiler FindFunction(string name, Type[] parameterTypes){
         IFunctionCompiler[] funcs = [..importFunctions, ..functions];
         foreach(var f in funcs){
             if(f.Name == name && MatchingParameterTypes(f, parameterTypes)){

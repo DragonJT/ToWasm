@@ -11,30 +11,42 @@ const wasmBytecode = new Uint8Array([
 var globals = {};
 var imports = {};
 imports.env = {};
-imports.env.PrintFloat=function(value){
+
+function ConvertIntToBool(value){
+    return value==0?false:true;
+}
+function PrintFloat(value){
 
     console.log(value);
-
 }
-imports.env.PrintBool=function(value){
+function PrintBool(value){
 
     console.log(value);
-
 }
-imports.env.CreateCanvas=function(){
+function CreateCanvas(){
 
     var canvas = document.createElement('canvas');
     canvas.width = 800;
     canvas.height = 600;
     document.body.appendChild(canvas); 
     globals.ctx = canvas.getContext('2d');
-
 }
-imports.env.FillRect=function(x, y, width, height, r, g, b){
+function FillRect(x, y, width, height, r, g, b){
 
     globals.ctx.fillStyle = 'rgb('+r+','+g+','+b+')';
     globals.ctx.fillRect(x,y,width,height);
-
+}
+imports.env.PrintFloat=function(value){
+return PrintFloat(value);
+}
+imports.env.PrintBool=function(value){
+return PrintBool(ConvertIntToBool(value));
+}
+imports.env.CreateCanvas=function(){
+return CreateCanvas();
+}
+imports.env.FillRect=function(x, y, width, height, r, g, b){
+return FillRect(x, y, width, height, r, g, b);
 }
 
 WebAssembly.instantiate(wasmBytecode, imports)

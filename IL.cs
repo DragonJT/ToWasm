@@ -4,26 +4,55 @@ class ILInstruction(Opcode opcode, object? value = null){
     public object? value = value;
 }
 
-class ILVariable(Valtype type, string name){
-    public Valtype type = type;
+class Variable(Type type, string name){
+    public Type type = type;
     public string name = name;
     public int id = -1;
 }
 
-class ILImportFunction(string name, Valtype returnType, ILVariable[] parameters, string code){
+class ILImportFunction(string name, Type returnType, Variable[] parameters, string code){
     public string name = name;
-    public Valtype returnType = returnType;
-    public ILVariable[] parameters = parameters;
+    public Type returnType = returnType;
+    public Variable[] parameters = parameters;
     public string code = code;
     public int id = -1;
+
+    public string EmitParameters(){
+        string result = "(";
+        for(var i=0;i<parameters.Length;i++){
+            result+=parameters[i].name;
+            if(i<parameters.Length-1){
+                result+=", ";
+            }
+        }
+        result+=")";
+        return result;
+    }
+
+    public string EmitArgs(){
+        string result = "(";
+        for(var i=0;i<parameters.Length;i++){
+            if(parameters[i].type == Type.Bool){
+                result+="ConvertIntToBool("+parameters[i].name+")";
+            }
+            else{
+                result+=parameters[i].name;
+            }
+            if(i<parameters.Length-1){
+                result+=", ";
+            }
+        }
+        result+=")";
+        return result;
+    }
 }
 
-class ILFunction(bool export, string name, Valtype returnType, ILVariable[] parameters, ILVariable[] locals, ILInstruction[] instructions){
+class ILFunction(bool export, string name, Valtype returnType, Variable[] parameters, Variable[] locals, ILInstruction[] instructions){
     public bool export = export;
     public string name = name;
     public Valtype returnType = returnType;
-    public ILVariable[] parameters = parameters;
-    public ILVariable[] locals = locals;
+    public Variable[] parameters = parameters;
+    public Variable[] locals = locals;
     public ILInstruction[] instructions = instructions;
     public int id = -1;
 
@@ -48,8 +77,6 @@ class IL{
     public void Add(ILImportFunction importFunction){
         importFunctions.Add(importFunction);
     }
-
-    
 
     uint FindFunctionID(string name){
         foreach(var f in importFunctions){
@@ -88,13 +115,13 @@ class IL{
                 vid++;
             }
 
-            Dictionary<Valtype, List<ILVariable>> locals = [];
+            Dictionary<Valtype, List<Variable>> locals = [];
             foreach(var l in f.locals){
-                if(locals.TryGetValue(l.type, out List<ILVariable>? localsOfType)){
+                if(locals.TryGetValue(l.type.valtype, out List<Variable>? localsOfType)){
                     localsOfType.Add(l);
                 }
                 else{
-                    locals.Add(l.type, [l]);
+                    locals.Add(l.type.valtype, [l]);
                 }
             }
 
@@ -152,14 +179,14 @@ class IL{
         foreach(var f in importFunctions){
             typeSection.Add([
                 WasmEmitter.functionType,
-                ..WasmEmitter.Vector(f.parameters.Select(p=>(byte)p.type).ToArray()),
-                ..WasmEmitter.Return(f.returnType)
+                ..WasmEmitter.Vector(f.parameters.Select(p=>(byte)p.type.valtype).ToArray()),
+                ..WasmEmitter.Return(f.returnType.valtype)
             ]);
         }
         foreach(var f in functions){
             typeSection.Add([
                 WasmEmitter.functionType, 
-                ..WasmEmitter.Vector(f.parameters.Select(p=>(byte)p.type).ToArray()), 
+                ..WasmEmitter.Vector(f.parameters.Select(p=>(byte)p.type.valtype).ToArray()), 
                 ..WasmEmitter.Return(f.returnType)
             ]);
         }
@@ -182,20 +209,26 @@ class IL{
             .. WasmEmitter.Section(SectionType.Func, [..funcSection]),
             .. WasmEmitter.Section(SectionType.Export, [..exportSection]),
             .. WasmEmitter.Section(SectionType.Code, [..codeSection])];
-            
+
+        var importStringHelpers = "";
+        importStringHelpers+=@"
+function ConvertIntToBool(value){
+    return value==0?false:true;
+}
+";
+        var importString0 = "";
+        foreach(var f in importFunctions){
+            importString0 += "function "+f.name+f.EmitParameters()+"{\n";
+            importString0 += f.code;
+            importString0 += "}\n";
+        }
+
         var importString1 = "";
         foreach(var f in importFunctions){
-            importString1 += "imports.env."+f.name+"=function(";
-            for(var i=0;i<f.parameters.Length;i++){
-                importString1+=f.parameters[i].name;
-                if(i<f.parameters.Length-1){
-                    importString1+=", ";
-                }
-            }
-            importString1 += "){\n";
-            importString1 += f.code;
+            importString1 += "imports.env."+f.name+"=function"+f.EmitParameters()+ "{\n";
+            importString1 += "return "+f.name+f.EmitArgs()+";";
             importString1 += "\n}\n";
         }
-        WasmEmitter.Emit(wasm, importString1);
+        WasmEmitter.Emit(wasm, importStringHelpers+importString0+importString1);
     }
 }

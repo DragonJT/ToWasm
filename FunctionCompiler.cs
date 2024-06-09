@@ -1,19 +1,13 @@
 
-using System.Reflection;
 
-class ExpressionInfo(ILInstruction[] instructions, string type){
+class ExpressionInfo(ILInstruction[] instructions, Type type){
     public ILInstruction[] instructions = instructions;
-    public string type = type;
-}
-
-class Variable(string type, string name){
-    public string type = type;
-    public string name = name;
+    public Type type = type;
 }
 
 class FunctionCompiler: IFunctionCompiler{
     readonly Compiler compiler;
-    public string ReturnType {get;}
+    public Type ReturnType {get;}
     public string Name {get;}
     public Variable[] Parameters {get;}
     readonly List<Variable> locals = [];
@@ -35,11 +29,11 @@ class FunctionCompiler: IFunctionCompiler{
 
     public FunctionCompiler(Compiler compiler, Token[] tokens){
         this.compiler = compiler;
-        ReturnType = tokens[0].GetVarnameValue();
+        ReturnType = Type.Parse(tokens[0].GetVarnameValue());
         Name = tokens[1].GetVarnameValue();
         var parametersTokens = tokens[2].GetParenthesesTokens();
         var splitParametersTokens = Compiler.SplitByComma([..parametersTokens]);
-        Parameters = splitParametersTokens.Select(p=>new Variable(p[0].value, p[1].value)).ToArray();
+        Parameters = splitParametersTokens.Select(p=>new Variable(Type.Parse(p[0].value), p[1].value)).ToArray();
         bodyTokens = tokens[3].GetCurlyTokens();
     }
 
@@ -52,8 +46,8 @@ class FunctionCompiler: IFunctionCompiler{
         return -1;
     }
 
-    static Opcode GetOpcode(string op, string type){
-        if(type == "float"){
+    static Opcode GetOpcode(string op, Type type){
+        if(type == Type.Float){
             return op switch
             {
                 "+" => Opcode.f32_add,
@@ -63,7 +57,7 @@ class FunctionCompiler: IFunctionCompiler{
                 _ => throw new Exception("Unexpected op:" + op),
             };
         }
-        else if(type == "int"){
+        else if(type == Type.Int){
             return op switch
             {
                 "+" => Opcode.i32_add,
@@ -85,7 +79,7 @@ class FunctionCompiler: IFunctionCompiler{
         var function = compiler.FindFunction(tokens[0].value, argExpressions.Select(e=>e.type).ToArray());
         var instructions = new List<ILInstruction>();
         for(var i=0;i<function.Parameters.Length;i++){
-            instructions.AddRange(TypeCompiler.AddConvertInstructions(argExpressions[i].instructions, argExpressions[i].type, function.Parameters[i].type));
+            instructions.AddRange(Type.AddConvertInstructions(argExpressions[i].instructions, argExpressions[i].type, function.Parameters[i].type));
         }
         return new ExpressionInfo([..instructions, new ILInstruction(Opcode.call, function.Name)], function.ReturnType);
     }
@@ -96,18 +90,18 @@ class FunctionCompiler: IFunctionCompiler{
         if(tokens.Length == 1){
             if(tokens[0].type == TokenType.Number){
                 if(tokens[0].value.Contains('.')){
-                    return new ExpressionInfo([new ILInstruction(Opcode.f32_const, float.Parse(tokens[0].value))], "float");
+                    return new ExpressionInfo([new ILInstruction(Opcode.f32_const, float.Parse(tokens[0].value))], Type.Float);
                 }
-                return new ExpressionInfo([new ILInstruction(Opcode.i32_const, int.Parse(tokens[0].value))], "int");
+                return new ExpressionInfo([new ILInstruction(Opcode.i32_const, int.Parse(tokens[0].value))], Type.Int);
             }
             else if(tokens[0].type == TokenType.Varname){
                 return new ExpressionInfo([new ILInstruction(Opcode.get_local, tokens[0].value)], GetVariable(tokens[0].value).type);
             }
             else if(tokens[0].type == TokenType.True){
-                return new ExpressionInfo([new ILInstruction(Opcode.i32_const, 1)], "bool");
+                return new ExpressionInfo([new ILInstruction(Opcode.i32_const, 1)],Type.Bool);
             }
             else if(tokens[0].type == TokenType.False){
-                return new ExpressionInfo([new ILInstruction(Opcode.i32_const, 0)], "bool");
+                return new ExpressionInfo([new ILInstruction(Opcode.i32_const, 0)], Type.Bool);
             }
             else{
                 throw new Exception("Unexpected tokentype: "+tokens[0].type);
@@ -124,9 +118,9 @@ class FunctionCompiler: IFunctionCompiler{
             if(split>=0){
                 var left = CompileExpression(tokens[0..split]);
                 var right = CompileExpression(tokens[(split+1)..]);
-                var type = TypeCompiler.CalcType(left.type, right.type);
-                left.instructions = TypeCompiler.AddConvertInstructions(left.instructions, left.type, type);
-                right.instructions = TypeCompiler.AddConvertInstructions(right.instructions, right.type, type);
+                var type = Type.ConvertType(left.type, right.type);
+                left.instructions = Type.AddConvertInstructions(left.instructions, left.type, type);
+                right.instructions = Type.AddConvertInstructions(right.instructions, right.type, type);
 
                 ILInstruction[] instructions = [..left.instructions, ..right.instructions, new ILInstruction(GetOpcode(tokens[split].value, type))];
                 return new ExpressionInfo(instructions, type);
@@ -138,9 +132,9 @@ class FunctionCompiler: IFunctionCompiler{
     ILInstruction[] CompileStatement(Token[] tokens){
         if(tokens[0].type == TokenType.Return){
             var expressionInfo = CompileExpression(tokens[1..]);
-            if(TypeCompiler.ValidFromToType(expressionInfo.type, ReturnType!)){
+            if(expressionInfo.type.ValidConversionType(ReturnType)){
                 return [
-                    ..TypeCompiler.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, ReturnType!),
+                    ..Type.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, ReturnType!),
                     new ILInstruction(Opcode.ret)
                 ];
             }
@@ -163,9 +157,9 @@ class FunctionCompiler: IFunctionCompiler{
         else if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Punctuation && tokens[1].value == "="){
             var expressionInfo = CompileExpression(tokens[2..]);
             var variable = GetVariable(tokens[0].value);
-            if(TypeCompiler.ValidFromToType(expressionInfo.type, variable.type)){
+            if(expressionInfo.type.ValidConversionType(variable.type)){
                 return [
-                    ..TypeCompiler.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, variable.type),
+                    ..Type.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, variable.type),
                     new ILInstruction(Opcode.set_local, variable.name)
                 ];
             }
@@ -188,8 +182,6 @@ class FunctionCompiler: IFunctionCompiler{
                 statementTokens.Add(t);
             }
         }
-        var ilLocals = locals.Select(l=>new ILVariable(TypeCompiler.StringToValtype(l.type), l.name)).ToArray();
-        var ilParameters = Parameters.Select(p=>new ILVariable(TypeCompiler.StringToValtype(p.type), p.name)).ToArray();
-        return new ILFunction(true, Name, TypeCompiler.StringToValtype(ReturnType), ilParameters, ilLocals, [..instructions]);
+        return new ILFunction(true, Name, ReturnType.valtype, Parameters, [..locals], [..instructions]);
     }
 }
