@@ -2,6 +2,7 @@
 static class TypeCompiler{
     public static Valtype StringToValtype(string type){
         return type switch{
+            "bool" => Valtype.I32,
             "float" => Valtype.F32,
             "int" => Valtype.I32,
             "void" => Valtype.Void,

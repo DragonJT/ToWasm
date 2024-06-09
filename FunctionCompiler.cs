@@ -103,6 +103,12 @@ class FunctionCompiler: IFunctionCompiler{
             else if(tokens[0].type == TokenType.Varname){
                 return new ExpressionInfo([new ILInstruction(Opcode.get_local, tokens[0].value)], GetVariable(tokens[0].value).type);
             }
+            else if(tokens[0].type == TokenType.True){
+                return new ExpressionInfo([new ILInstruction(Opcode.i32_const, 1)], "bool");
+            }
+            else if(tokens[0].type == TokenType.False){
+                return new ExpressionInfo([new ILInstruction(Opcode.i32_const, 0)], "bool");
+            }
             else{
                 throw new Exception("Unexpected tokentype: "+tokens[0].type);
             }

@@ -4,6 +4,8 @@ enum TokenType{
     Punctuation,
     Return,
     Var,
+    True,
+    False,
     Import,
     Parentheses,
     Curly,
@@ -70,6 +72,8 @@ class Tokenizer(string code){
             "var" => new Token(value, TokenType.Var, start),
             "return" => new Token(value, TokenType.Return, start),
             "import" => new Token(value, TokenType.Import, start),
+            "true" => new Token(value, TokenType.True, start),
+            "false" => new Token(value, TokenType.False, start),
             _ => new Token(value, TokenType.Varname, start),
         };
     }

@@ -6,6 +6,10 @@ import void PrintFloat(float value){
     console.log(value);
 }
 
+import void PrintBool(bool value){
+    console.log(value);
+}
+
 import void CreateCanvas(){
     var canvas = document.createElement('canvas');
     canvas.width = 800;
@@ -28,6 +32,8 @@ float Run(){
     FillRect(100,y,100,50,0,y/2,255);
     y = y + 100;
     FillRect(100,y,100,50,0,y/2,255);
+    PrintBool(true);
+    PrintBool(false);
     return 5; 
 }";
         var tokenizer = new Tokenizer(code);

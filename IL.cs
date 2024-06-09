@@ -182,20 +182,20 @@ class IL{
             .. WasmEmitter.Section(SectionType.Func, [..funcSection]),
             .. WasmEmitter.Section(SectionType.Export, [..exportSection]),
             .. WasmEmitter.Section(SectionType.Code, [..codeSection])];
-
-        var importString = "";
+            
+        var importString1 = "";
         foreach(var f in importFunctions){
-            importString += "imports.env."+f.name+"=function(";
+            importString1 += "imports.env."+f.name+"=function(";
             for(var i=0;i<f.parameters.Length;i++){
-                importString+=f.parameters[i].name;
+                importString1+=f.parameters[i].name;
                 if(i<f.parameters.Length-1){
-                    importString+=", ";
+                    importString1+=", ";
                 }
             }
-            importString += "){\n";
-            importString += f.code;
-            importString += "\n}\n";
+            importString1 += "){\n";
+            importString1 += f.code;
+            importString1 += "\n}\n";
         }
-        WasmEmitter.Emit(wasm, importString);
+        WasmEmitter.Emit(wasm, importString1);
     }
 }
