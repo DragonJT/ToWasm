@@ -6,14 +6,24 @@ import void PrintFloat(float value){
     console.log(value);
 }
 
-float Test(float a, float b){
-    return a + b;
+import void CreateCanvas(){
+    var canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    document.body.appendChild(canvas); 
+    globals.ctx = canvas.getContext('2d');
+}
+
+import void FillRect(float x, float y, float width, float height, float r, float g, float b){
+    globals.ctx.fillStyle = 'rgb('+r+','+g+','+b+')';
+    globals.ctx.fillRect(x,y,width,height);
 }
 
 float Run(){ 
-    var x = Test(2, 4); 
-    PrintFloat(Test(3, 4));
-    return x + 6 * x; 
+    CreateCanvas();
+    FillRect(0,0,800,600,0,0,0);
+    FillRect(100,100,100,100,0,100,255);
+    return 5; 
 }";
         var tokenizer = new Tokenizer(code);
         var tokens = tokenizer.Tokenize(0);

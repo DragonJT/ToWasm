@@ -179,6 +179,7 @@ static class WasmEmitter
 const wasmBytecode = new Uint8Array([
 " + wasmString +
 @"]);
+var globals = {};
 var imports = {};
 imports.env = {};
 " +
