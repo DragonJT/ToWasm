@@ -1,4 +1,6 @@
 
+using System.Reflection;
+
 class ExpressionInfo(ILInstruction[] instructions, string type){
     public ILInstruction[] instructions = instructions;
     public string type = type;
@@ -151,6 +153,19 @@ class FunctionCompiler: IFunctionCompiler{
         }
         else if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Parentheses){
             return GetInvocationExpression(tokens).instructions;
+        }
+        else if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Punctuation && tokens[1].value == "="){
+            var expressionInfo = CompileExpression(tokens[2..]);
+            var variable = GetVariable(tokens[0].value);
+            if(TypeCompiler.ValidFromToType(expressionInfo.type, variable.type)){
+                return [
+                    ..TypeCompiler.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, variable.type),
+                    new ILInstruction(Opcode.set_local, variable.name)
+                ];
+            }
+            else{
+                throw new Exception("Type mismatch: "+expressionInfo.type+" - "+variable.type);
+            }
         }
         throw new Exception("Unexpected statement");
     }

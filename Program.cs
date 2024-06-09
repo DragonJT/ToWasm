@@ -22,7 +22,12 @@ import void FillRect(float x, float y, float width, float height, float r, float
 float Run(){ 
     CreateCanvas();
     FillRect(0,0,800,600,0,0,0);
-    FillRect(100,100,100,100,0,100,255);
+    var y = 100;
+    FillRect(100,y,100,50,0,y/2,255);
+    y = y + 100;
+    FillRect(100,y,100,50,0,y/2,255);
+    y = y + 100;
+    FillRect(100,y,100,50,0,y/2,255);
     return 5; 
 }";
         var tokenizer = new Tokenizer(code);
