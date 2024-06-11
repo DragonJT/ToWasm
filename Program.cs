@@ -36,6 +36,9 @@ float Run(){
     var b = 20 * 5.5;
     PrintBool(a<b);
     PrintBool(a>b);
+    if(a<b){
+        PrintFloat(5.5);
+    }
     return 5; 
 }";
         var tokenizer = new Tokenizer(code);

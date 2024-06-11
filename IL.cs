@@ -62,7 +62,12 @@ class ILFunction(bool export, string name, int id, Valtype returnType, Variable[
                 return (uint)p.id;
             }
         }
-        return (uint)locals.First(l=>l.name == name).id;
+        foreach(var l in locals){
+            if(l.name == name){
+                return (uint)l.id;
+            }
+        }
+        throw new Exception("Cant find local or parameter with name: "+name);
     }
 }
 
@@ -137,6 +142,9 @@ class IL{
                 else if(instruction.opcode == Opcode.call){
                     var id = (uint)instruction.value!;
                     codeBytes.AddRange([(byte)Opcode.call, ..WasmEmitter.UnsignedLEB128(id)]);
+                }
+                else if(instruction.opcode == Opcode.@if){
+                    codeBytes.AddRange([(byte)Opcode.@if, (byte)(Blocktype)instruction.value!]);
                 }
                 else{
                     codeBytes.Add((byte)instruction.opcode);

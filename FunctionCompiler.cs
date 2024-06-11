@@ -238,6 +238,15 @@ class FunctionCompiler: IFunctionCompiler{
                 new ILInstruction(Opcode.set_local, varname),
             ];
         }
+        else if(tokens[0].type == TokenType.If){
+            var condition = CompileExpression([..tokens[1].GetParenthesesTokens()]);
+            return [
+                ..TypeConversions.Convert(condition, Type.Bool), 
+                new ILInstruction(Opcode.@if, Blocktype.@void), 
+                ..CompileBody(tokens[2].GetCurlyTokens()), 
+                new ILInstruction(Opcode.end)
+            ];
+        }
         else if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Parentheses){
             return GetInvocationExpression(tokens).instructions;
         }
@@ -249,7 +258,7 @@ class FunctionCompiler: IFunctionCompiler{
         throw new Exception("Unexpected statement");
     }
 
-    public ILFunction Compile(){
+    ILInstruction[] CompileBody(List<Token> bodyTokens){
         List<Token> statementTokens = [];
         List<ILInstruction> instructions = [];
         foreach(var t in bodyTokens){
@@ -257,10 +266,19 @@ class FunctionCompiler: IFunctionCompiler{
                 instructions.AddRange(CompileStatement([..statementTokens]));
                 statementTokens.Clear();
             }
+            else if(t.type == TokenType.Curly){
+                instructions.AddRange(CompileStatement([..statementTokens, t]));
+                statementTokens.Clear();
+            }
             else{
                 statementTokens.Add(t);
             }
         }
-        return new ILFunction(true, Name, ID, ReturnType.valtype, Parameters, [..locals], [..instructions]);
+        return [..instructions];
+    }
+
+    public ILFunction Compile(){
+        var instructions = CompileBody(bodyTokens);
+        return new ILFunction(true, Name, ID, ReturnType.valtype, Parameters, [..locals], instructions);
     }
 }
