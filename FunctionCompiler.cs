@@ -64,6 +64,20 @@ static class FuncCalls{
                 return expressionInfo;
             }
         }
+
+        Console.WriteLine("=============");
+        foreach(var a in args){
+            Console.Write(a.type.name);
+            Console.Write(",");
+        }
+        Console.WriteLine();
+        foreach(var c in calls){
+            foreach(var a in c.funcSignature.@params){
+                Console.Write(a.name);
+                Console.Write(",");
+            }
+            Console.WriteLine();
+        }
         throw new Exception("Cant match function signature");
     }
 }
@@ -87,6 +101,13 @@ static class Operators{
 
     static Operators(){
         operators = [[
+            new BinaryOp("<", [
+                BinaryOpSignature(Type.Float, Type.Float, Type.Bool, Opcode.f32_lt),
+                BinaryOpSignature(Type.Int, Type.Int, Type.Bool, Opcode.i32_lt_s)]),
+            new BinaryOp(">", [
+                BinaryOpSignature(Type.Float, Type.Float, Type.Bool, Opcode.f32_gt),
+                BinaryOpSignature(Type.Int, Type.Int, Type.Bool, Opcode.i32_gt_s)]),
+            ],[
             new BinaryOp("+", [
                 BinaryOpSignature(Type.Float, Type.Float, Type.Float, Opcode.f32_add),
                 BinaryOpSignature(Type.Int, Type.Int, Type.Int, Opcode.i32_add)]),
@@ -146,7 +167,9 @@ class FunctionCompiler: IFunctionCompiler{
         for(var i=tokens.Length-1;i>=0;i--){
             if(tokens[i].type == TokenType.Punctuation){
                 foreach(var o in ops){
-                    return new SplitOp(o, i);
+                    if(o.symbol == tokens[i].value){
+                        return new SplitOp(o, i);
+                    }
                 }
             }
         }
@@ -193,6 +216,7 @@ class FunctionCompiler: IFunctionCompiler{
             if(split!=null){
                 var left = CompileExpression(tokens[0..split.index]);
                 var right = CompileExpression(tokens[(split.index+1)..]);
+                Console.WriteLine(split.binaryOp.symbol);
                 return split.binaryOp.calls.CallFunction([left, right]);
             }
         }
@@ -207,6 +231,7 @@ class FunctionCompiler: IFunctionCompiler{
         else if(tokens[0].type == TokenType.Var){
             var varname = tokens[1].value;
             var expressionInfo = CompileExpression(tokens[3..]);
+            Console.WriteLine(expressionInfo.type.name+" - "+varname);
             locals.Add(new Variable(expressionInfo.type, varname));
             return [
                 ..expressionInfo.instructions,
