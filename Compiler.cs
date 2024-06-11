@@ -3,6 +3,7 @@ interface IFunctionCompiler{
     string Name{get;}
     Type ReturnType {get;}
     Variable[] Parameters {get;}
+    int ID{get;}
 }
 
 class ImportFunctionCompiler:IFunctionCompiler{
@@ -10,6 +11,7 @@ class ImportFunctionCompiler:IFunctionCompiler{
     public Type ReturnType { get;}
     public Variable[] Parameters {get;}
     public readonly string code;
+    public int ID{get;set;} = -1;
 
     public ImportFunctionCompiler(Token[] tokens){
         ReturnType =Type.Parse(tokens[1].GetVarnameValue());
@@ -20,26 +22,13 @@ class ImportFunctionCompiler:IFunctionCompiler{
     }
 
     public ILImportFunction Compile(){
-        return new ILImportFunction(Name, ReturnType, Parameters, code);
+        return new ILImportFunction(Name, ID, ReturnType, Parameters, code);
     }
 }
 
 class Compiler{
     readonly List<ImportFunctionCompiler> importFunctions = [];
     readonly List<FunctionCompiler> functions = [];
-
-    static bool MatchingParameterTypes(IFunctionCompiler func, Type[] parameterTypes){
-        var parameters = func.Parameters;
-        if(parameters.Length != parameterTypes.Length){
-            return false;
-        }
-        for(var i=0;i<parameters.Length;i++){
-            if(!parameterTypes[i].ValidConversionType(parameters[i].type)){
-                return false;
-            }
-        }
-        return true;
-    }
 
     public static Token[][] SplitByComma(Token[] tokens){
         List<Token[]> result = [];
@@ -60,14 +49,22 @@ class Compiler{
     }
 
 
-    public IFunctionCompiler FindFunction(string name, Type[] parameterTypes){
-        IFunctionCompiler[] funcs = [..importFunctions, ..functions];
-        foreach(var f in funcs){
-            if(f.Name == name && MatchingParameterTypes(f, parameterTypes)){
-                return f;
+    public FuncCall[] FindFuncCalls(string name){
+        List<FuncCall> calls = [];
+        foreach(var f in importFunctions){
+            if(f.Name == name){
+                calls.Add(new FuncCall(new FuncSignature(f.Parameters.Select(p=>p.type).ToArray(), f.ReturnType), new ILInstruction(Opcode.call, (uint)f.ID)));
             }
         }
-        throw new Exception("Cant find function with name: "+name);
+        foreach(var f in functions){
+            if(f.Name == name){
+                calls.Add(new FuncCall(new FuncSignature(f.Parameters.Select(p=>p.type).ToArray(), f.ReturnType), new ILInstruction(Opcode.call, (uint)f.ID)));
+            }
+        }
+        if(calls.Count == 0){
+            throw new Exception("Cant find function with name: "+name);
+        }
+        return [..calls];
     }
 
     public IL Compile(List<Token> tokens){
@@ -88,6 +85,15 @@ class Compiler{
             else{
                 sectionTokens.Add(t);
             }
+        }
+        var id = 0;
+        foreach(var f in importFunctions){
+            f.ID = id;
+            id++;
+        }
+        foreach(var f in functions){
+            f.ID = id;
+            id++;
         }
         foreach(var f in importFunctions){
             il.Add(f.Compile());

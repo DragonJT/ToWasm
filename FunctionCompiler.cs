@@ -1,4 +1,108 @@
 
+class FuncSignature(Type[] @params, Type output){
+    public readonly Type[] @params = @params;
+    public readonly Type output = output;
+
+    public ExpressionInfo? IsMatch(ExpressionInfo[] args){
+        List<ILInstruction> instructions = [];
+        if(args.Length != @params.Length){
+            return null;
+        }
+        for(var i=0;i<args.Length;i++){
+            if(@params[i] != args[i].type){
+                return null;
+            }
+            else{
+                instructions.AddRange(args[i].instructions);
+            }
+        }
+        return new ExpressionInfo([..instructions], output);
+    }
+
+    public ExpressionInfo? CanMatch(ExpressionInfo[] args){
+        List<ILInstruction> instructions = [];
+        if(args.Length != @params.Length){
+            return null;
+        }
+        for(var i=0;i<args.Length;i++){
+            if(@params[i] == args[i].type){
+                instructions.AddRange(args[i].instructions);
+            }
+            else{
+                var convert = TypeConversions.Convert(args[i].type, @params[i]);
+                if(convert == null){
+                    return null;
+                }
+                else{
+                    instructions.AddRange(args[i].instructions);
+                    instructions.Add(new ILInstruction(convert.opcode));
+                }
+            }
+        }
+        return new ExpressionInfo([..instructions], output); 
+    }
+}
+
+class FuncCall(FuncSignature funcSignature, ILInstruction instruction){
+    public readonly FuncSignature funcSignature = funcSignature;
+    public readonly ILInstruction instruction = instruction;
+}
+
+static class FuncCalls{
+    public static ExpressionInfo CallFunction(this FuncCall[] calls, ExpressionInfo[] args){
+        foreach(var c in calls){
+            var expressionInfo = c.funcSignature.IsMatch(args);
+            if(expressionInfo!=null){
+                expressionInfo.instructions = [..expressionInfo.instructions, c.instruction];
+                return expressionInfo;
+            }
+        }
+        foreach(var c in calls){
+            var expressionInfo = c.funcSignature.CanMatch(args);
+            if(expressionInfo!=null){
+                expressionInfo.instructions = [..expressionInfo.instructions, c.instruction];
+                return expressionInfo;
+            }
+        }
+        throw new Exception("Cant match function signature");
+    }
+}
+
+class BinaryOp(string symbol, FuncCall[] calls){
+    public readonly string symbol = symbol;
+    public readonly FuncCall[] calls = calls;
+}
+
+class SplitOp(BinaryOp binaryOp, int index){
+    public readonly BinaryOp binaryOp = binaryOp;
+    public readonly int index = index;
+}
+
+static class Operators{
+    public readonly static BinaryOp[][] operators;
+
+    static FuncCall BinaryOpSignature(Type left, Type right, Type output, Opcode opcode){
+        return new FuncCall(new FuncSignature([left, right], output), new ILInstruction(opcode));
+    }
+
+    static Operators(){
+        operators = [[
+            new BinaryOp("+", [
+                BinaryOpSignature(Type.Float, Type.Float, Type.Float, Opcode.f32_add),
+                BinaryOpSignature(Type.Int, Type.Int, Type.Int, Opcode.i32_add)]),
+            new BinaryOp("-", [
+                BinaryOpSignature(Type.Float, Type.Float, Type.Float, Opcode.f32_sub),
+                BinaryOpSignature(Type.Int, Type.Int, Type.Int, Opcode.i32_sub)]),
+            ],[
+            new BinaryOp("*", [
+                BinaryOpSignature(Type.Float, Type.Float, Type.Float, Opcode.f32_mul),
+                BinaryOpSignature(Type.Int, Type.Int, Type.Int, Opcode.i32_mul)]),
+            new BinaryOp("/", [
+                BinaryOpSignature(Type.Float, Type.Float, Type.Float, Opcode.f32_div),
+                BinaryOpSignature(Type.Int, Type.Int, Type.Int, Opcode.i32_div_s)]),
+            ]];
+    }
+}
 
 class ExpressionInfo(ILInstruction[] instructions, Type type){
     public ILInstruction[] instructions = instructions;
@@ -9,6 +113,7 @@ class FunctionCompiler: IFunctionCompiler{
     readonly Compiler compiler;
     public Type ReturnType {get;}
     public string Name {get;}
+    public int ID{get;set;} = -1;
     public Variable[] Parameters {get;}
     readonly List<Variable> locals = [];
     readonly List<Token> bodyTokens;
@@ -37,56 +142,26 @@ class FunctionCompiler: IFunctionCompiler{
         bodyTokens = tokens[3].GetCurlyTokens();
     }
 
-    static int FindSplit(Token[] tokens, string[] ops){
+    static SplitOp? FindSplit(Token[] tokens, BinaryOp[] ops){
         for(var i=tokens.Length-1;i>=0;i--){
-            if(tokens[i].type == TokenType.Punctuation && ops.Contains(tokens[i].value)){
-                return i;
+            if(tokens[i].type == TokenType.Punctuation){
+                foreach(var o in ops){
+                    return new SplitOp(o, i);
+                }
             }
         }
-        return -1;
-    }
-
-    static Opcode GetOpcode(string op, Type type){
-        if(type == Type.Float){
-            return op switch
-            {
-                "+" => Opcode.f32_add,
-                "-" => Opcode.f32_sub,
-                "*" => Opcode.f32_mul,
-                "/" => Opcode.f32_div,
-                _ => throw new Exception("Unexpected op:" + op),
-            };
-        }
-        else if(type == Type.Int){
-            return op switch
-            {
-                "+" => Opcode.i32_add,
-                "-" => Opcode.i32_sub,
-                "*" => Opcode.i32_mul,
-                "/" => Opcode.i32_div_s,
-                _ => throw new Exception("Unexpected op:" + op),
-            };
-        }
-        else{
-            throw new Exception("Unexpected type");
-        }
+        return null;
     }
 
     ExpressionInfo GetInvocationExpression(Token[] tokens){
         var argsTokens = tokens[1].GetParenthesesTokens();
         var splitArgsTokens = Compiler.SplitByComma([..argsTokens]);
         var argExpressions = splitArgsTokens.Select(CompileExpression).ToArray();
-        var function = compiler.FindFunction(tokens[0].value, argExpressions.Select(e=>e.type).ToArray());
-        var instructions = new List<ILInstruction>();
-        for(var i=0;i<function.Parameters.Length;i++){
-            instructions.AddRange(Type.AddConvertInstructions(argExpressions[i].instructions, argExpressions[i].type, function.Parameters[i].type));
-        }
-        return new ExpressionInfo([..instructions, new ILInstruction(Opcode.call, function.Name)], function.ReturnType);
+        var funcCalls = compiler.FindFuncCalls(tokens[0].value);
+        return funcCalls.CallFunction(argExpressions);
     }
 
     ExpressionInfo CompileExpression(Token[] tokens){
-        string[][] operators = [["+", "-"], ["*", "/"]];
-
         if(tokens.Length == 1){
             if(tokens[0].type == TokenType.Number){
                 if(tokens[0].value.Contains('.')){
@@ -113,17 +188,12 @@ class FunctionCompiler: IFunctionCompiler{
             }
         }
 
-        foreach(var ops in operators){
+        foreach(var ops in Operators.operators){
             var split = FindSplit(tokens, ops);
-            if(split>=0){
-                var left = CompileExpression(tokens[0..split]);
-                var right = CompileExpression(tokens[(split+1)..]);
-                var type = Type.ConvertType(left.type, right.type);
-                left.instructions = Type.AddConvertInstructions(left.instructions, left.type, type);
-                right.instructions = Type.AddConvertInstructions(right.instructions, right.type, type);
-
-                ILInstruction[] instructions = [..left.instructions, ..right.instructions, new ILInstruction(GetOpcode(tokens[split].value, type))];
-                return new ExpressionInfo(instructions, type);
+            if(split!=null){
+                var left = CompileExpression(tokens[0..split.index]);
+                var right = CompileExpression(tokens[(split.index+1)..]);
+                return split.binaryOp.calls.CallFunction([left, right]);
             }
         }
         throw new Exception("Unexpected tokens");
@@ -132,15 +202,7 @@ class FunctionCompiler: IFunctionCompiler{
     ILInstruction[] CompileStatement(Token[] tokens){
         if(tokens[0].type == TokenType.Return){
             var expressionInfo = CompileExpression(tokens[1..]);
-            if(expressionInfo.type.ValidConversionType(ReturnType)){
-                return [
-                    ..Type.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, ReturnType!),
-                    new ILInstruction(Opcode.ret)
-                ];
-            }
-            else{
-                throw new Exception("Return type mismatch: "+expressionInfo.type+" - "+ReturnType!);
-            }
+            return [..TypeConversions.Convert(expressionInfo, ReturnType), new ILInstruction(Opcode.ret)];
         }
         else if(tokens[0].type == TokenType.Var){
             var varname = tokens[1].value;
@@ -157,15 +219,7 @@ class FunctionCompiler: IFunctionCompiler{
         else if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Punctuation && tokens[1].value == "="){
             var expressionInfo = CompileExpression(tokens[2..]);
             var variable = GetVariable(tokens[0].value);
-            if(expressionInfo.type.ValidConversionType(variable.type)){
-                return [
-                    ..Type.AddConvertInstructions(expressionInfo.instructions, expressionInfo.type, variable.type),
-                    new ILInstruction(Opcode.set_local, variable.name)
-                ];
-            }
-            else{
-                throw new Exception("Type mismatch: "+expressionInfo.type+" - "+variable.type);
-            }
+            return [..TypeConversions.Convert(expressionInfo, variable.type), new ILInstruction(Opcode.set_local, variable.name)];
         }
         throw new Exception("Unexpected statement");
     }
@@ -182,6 +236,6 @@ class FunctionCompiler: IFunctionCompiler{
                 statementTokens.Add(t);
             }
         }
-        return new ILFunction(true, Name, ReturnType.valtype, Parameters, [..locals], [..instructions]);
+        return new ILFunction(true, Name, ID, ReturnType.valtype, Parameters, [..locals], [..instructions]);
     }
 }

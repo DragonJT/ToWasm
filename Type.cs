@@ -1,4 +1,38 @@
+class TypeConversion(Type oldType, Type newType, Opcode opcode){
+    public readonly Type oldType = oldType;
+    public readonly Type newType = newType;
+    public readonly Opcode opcode = opcode;
+}
 
+static class TypeConversions{
+    public static readonly TypeConversion[] typeConversions;
+
+    static TypeConversions(){
+        typeConversions = [new TypeConversion(Type.Int, Type.Float, Opcode.f32_convert_i32_s)];
+    }
+
+    public static TypeConversion? Convert(Type oldType, Type newType){
+        foreach(var c in typeConversions){
+            if(c.oldType == oldType && c.newType == newType){
+                return c;
+            }
+        }
+        return null;
+    }
+
+    public static ILInstruction[] Convert(ExpressionInfo expressionInfo, Type finalType){
+        if(expressionInfo.type == finalType){
+            return expressionInfo.instructions;
+        }
+        var convert = Convert(expressionInfo.type, finalType);
+        if(convert == null){
+            throw new Exception("Type mismatch: "+expressionInfo.type.name+" - "+finalType.name);
+        }
+        else{
+            return [..expressionInfo.instructions, new ILInstruction(convert.opcode)];
+        }
+    }
+}
 
 class Type(string name, Valtype valtype){
     public readonly string name = name;
@@ -18,35 +52,5 @@ class Type(string name, Valtype valtype){
             "void" => Void,
             _ => throw new Exception("Unexpected type"),
         };
-    }
-
-    public bool ValidConversionType(Type conversion){
-        if(this == conversion){
-            return true;
-        }
-        if(this == Int && conversion == Float){
-            return true;
-        }
-        return false;
-    }
-
-    public static Type ConvertType(Type left, Type right){
-        if(left.ValidConversionType(right)){
-            return right;
-        }
-        if(right.ValidConversionType(left)){
-            return left;
-        }
-        throw new Exception("Type mismatch: "+left+" - "+right);
-    }
-
-    public static ILInstruction[] AddConvertInstructions(ILInstruction[] instructions, Type oldType, Type newType){
-        if(oldType == newType){
-            return instructions;
-        }
-        if(oldType == Int && newType == Float){
-            return [..instructions, new ILInstruction(Opcode.f32_convert_i32_s)];
-        }
-        throw new Exception("Unexpected old and new types");
     }
 }

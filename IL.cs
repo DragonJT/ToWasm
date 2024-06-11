@@ -10,12 +10,12 @@ class Variable(Type type, string name){
     public int id = -1;
 }
 
-class ILImportFunction(string name, Type returnType, Variable[] parameters, string code){
+class ILImportFunction(string name, int id, Type returnType, Variable[] parameters, string code){
     public string name = name;
+    public int id = id;
     public Type returnType = returnType;
     public Variable[] parameters = parameters;
     public string code = code;
-    public int id = -1;
 
     public string EmitParameters(){
         string result = "(";
@@ -47,14 +47,14 @@ class ILImportFunction(string name, Type returnType, Variable[] parameters, stri
     }
 }
 
-class ILFunction(bool export, string name, Valtype returnType, Variable[] parameters, Variable[] locals, ILInstruction[] instructions){
+class ILFunction(bool export, string name, int id, Valtype returnType, Variable[] parameters, Variable[] locals, ILInstruction[] instructions){
     public bool export = export;
     public string name = name;
     public Valtype returnType = returnType;
     public Variable[] parameters = parameters;
     public Variable[] locals = locals;
     public ILInstruction[] instructions = instructions;
-    public int id = -1;
+    public int id = id;
 
     public uint FindLocalID(string name){
         foreach(var p in parameters){
@@ -78,15 +78,6 @@ class IL{
         importFunctions.Add(importFunction);
     }
 
-    uint FindFunctionID(string name){
-        foreach(var f in importFunctions){
-            if(f.name == name){
-                return (uint)f.id;
-            }
-        }
-        return (uint)functions.First(f=>f.name == name).id;
-    }
-
     public void Print(){
         foreach(var f in functions){
             Console.WriteLine(f.name);
@@ -97,16 +88,6 @@ class IL{
     }
 
     public void Emit(){
-        var fid = 0;
-        foreach(var f in importFunctions){
-            f.id = fid;
-            fid++;
-        }
-        foreach(var f in functions){
-            f.id = fid;
-            fid++;
-        }
-
         List<byte[]> codeSection = [];
         foreach(var f in functions){
             var vid = 0;
@@ -154,8 +135,7 @@ class IL{
                     codeBytes.AddRange([(byte)Opcode.set_local, ..WasmEmitter.UnsignedLEB128(id)]);
                 }
                 else if(instruction.opcode == Opcode.call){
-                    var funcName = (string)instruction.value!;
-                    var id = FindFunctionID(funcName);
+                    var id = (uint)instruction.value!;
                     codeBytes.AddRange([(byte)Opcode.call, ..WasmEmitter.UnsignedLEB128(id)]);
                 }
                 else{
