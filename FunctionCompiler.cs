@@ -138,6 +138,7 @@ class FunctionCompiler: IFunctionCompiler{
     public Variable[] Parameters {get;}
     readonly List<Variable> locals = [];
     readonly List<Token> bodyTokens;
+    public List<int> breakIDs = [];
 
     Variable GetVariable(string name){
         foreach(var p in Parameters){
@@ -240,22 +241,38 @@ class FunctionCompiler: IFunctionCompiler{
         }
         else if(tokens[0].type == TokenType.If){
             var condition = CompileExpression([..tokens[1].GetParenthesesTokens()]);
+            if(breakIDs.Count>0){
+                breakIDs[^1]++;
+            }
+            var body = CompileBody(tokens[2].GetCurlyTokens());
+            if(breakIDs.Count>0){
+                breakIDs[^1]--;
+            }
             return [
                 ..TypeConversions.Convert(condition, Type.Bool), 
                 new ILInstruction(Opcode.@if, Valtype.Void), 
-                ..CompileBody(tokens[2].GetCurlyTokens()), 
+                ..body, 
                 new ILInstruction(Opcode.end)
             ];
         }
         else if(tokens[0].type == TokenType.For){
+            breakIDs.Add(1);
+            var body = CompileBody(tokens[1].GetCurlyTokens());
+            breakIDs.RemoveAt(breakIDs.Count-1);
             return [
                 new ILInstruction(Opcode.block, Valtype.Void),
                 new ILInstruction(Opcode.loop, Valtype.Void),
-                ..CompileBody(tokens[1].GetCurlyTokens()),
+                ..body,
                 new ILInstruction(Opcode.br, (uint)0),
                 new ILInstruction(Opcode.end),
                 new ILInstruction(Opcode.end),
             ];
+        }
+        else if(tokens[0].type == TokenType.Break){
+            if(breakIDs.Count == 0){
+                throw new Exception("Expecting something to break out of...");
+            }
+            return [new ILInstruction(Opcode.br, (uint)breakIDs[^1])];
         }
         else if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Parentheses){
             return GetInvocationExpression(tokens).instructions;

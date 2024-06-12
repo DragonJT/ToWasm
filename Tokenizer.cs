@@ -6,6 +6,7 @@ enum TokenType{
     Var,
     If,
     For,
+    Break,
     True,
     False,
     Import,
@@ -78,6 +79,7 @@ class Tokenizer(string code){
             "false" => new Token(value, TokenType.False, start),
             "if" => new Token(value, TokenType.If, start),
             "for" => new Token(value, TokenType.For, start),
+            "break" => new Token(value, TokenType.Break, start),
             _ => new Token(value, TokenType.Varname, start),
         };
     }

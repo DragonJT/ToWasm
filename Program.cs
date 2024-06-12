@@ -31,9 +31,10 @@ float Run(){
         FillRect(100,y,100,20,0,y/2,255);
         y = y+50;
         if(y>400){
-            return 1;
+            break;
         }
     }
+    PrintFloat(4.5);
     return 0; 
 }";
         var tokenizer = new Tokenizer(code);
