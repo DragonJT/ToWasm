@@ -144,7 +144,17 @@ class IL{
                     codeBytes.AddRange([(byte)Opcode.call, ..WasmEmitter.UnsignedLEB128(id)]);
                 }
                 else if(instruction.opcode == Opcode.@if){
-                    codeBytes.AddRange([(byte)Opcode.@if, (byte)(Blocktype)instruction.value!]);
+                    codeBytes.AddRange([(byte)Opcode.@if, (byte)(Valtype)instruction.value!]);
+                }
+                else if(instruction.opcode == Opcode.block){
+                    codeBytes.AddRange([(byte)Opcode.block, (byte)(Valtype)instruction.value!]);
+                }
+                else if(instruction.opcode == Opcode.loop){
+                    codeBytes.AddRange([(byte)Opcode.loop, (byte)(Valtype)instruction.value!]);
+                }
+                else if(instruction.opcode == Opcode.br){
+                    var id = (uint)instruction.value!;
+                    codeBytes.AddRange([(byte)Opcode.br, ..WasmEmitter.UnsignedLEB128(id)]);
                 }
                 else{
                     codeBytes.Add((byte)instruction.opcode);

@@ -242,9 +242,19 @@ class FunctionCompiler: IFunctionCompiler{
             var condition = CompileExpression([..tokens[1].GetParenthesesTokens()]);
             return [
                 ..TypeConversions.Convert(condition, Type.Bool), 
-                new ILInstruction(Opcode.@if, Blocktype.@void), 
+                new ILInstruction(Opcode.@if, Valtype.Void), 
                 ..CompileBody(tokens[2].GetCurlyTokens()), 
                 new ILInstruction(Opcode.end)
+            ];
+        }
+        else if(tokens[0].type == TokenType.For){
+            return [
+                new ILInstruction(Opcode.block, Valtype.Void),
+                new ILInstruction(Opcode.loop, Valtype.Void),
+                ..CompileBody(tokens[1].GetCurlyTokens()),
+                new ILInstruction(Opcode.br, (uint)0),
+                new ILInstruction(Opcode.end),
+                new ILInstruction(Opcode.end),
             ];
         }
         else if(tokens[0].type == TokenType.Varname && tokens[1].type == TokenType.Parentheses){

@@ -27,19 +27,14 @@ float Run(){
     CreateCanvas();
     FillRect(0,0,800,600,0,0,0);
     var y = 100;
-    FillRect(100,y,100,20,0,y/2,255);
-    y = y + 100;
-    FillRect(100,y,100,20,0,y/2,255);
-    y = y + 100;
-    FillRect(100,y,100,20,0,y/2,255);
-    var a = 10 * 2;
-    var b = 20 * 5.5;
-    PrintBool(a<b);
-    PrintBool(a>b);
-    if(a<b){
-        PrintFloat(5.5);
+    for{
+        FillRect(100,y,100,20,0,y/2,255);
+        y = y+50;
+        if(y>400){
+            return 1;
+        }
     }
-    return 5; 
+    return 0; 
 }";
         var tokenizer = new Tokenizer(code);
         var tokens = tokenizer.Tokenize(0);
