@@ -173,12 +173,14 @@ const wasmBytecode = new Uint8Array([
 @"]);
 var globals = {};
 var imports = {};
+var exports;
 imports.env = {};
 " +
 importString
 + @"
 WebAssembly.instantiate(wasmBytecode, imports)
   .then(module => {
+    exports = module.instance.exports;
     console.log(module.instance.exports.Run());
   })
   .catch(error => {

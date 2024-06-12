@@ -10,6 +10,10 @@ import void PrintBool(bool value){
     console.log(value);
 }
 
+import float Random(){
+    return Math.random();
+}
+
 import void CreateCanvas(){
     var canvas = document.createElement('canvas');
     canvas.width = 800;
@@ -23,6 +27,15 @@ import void FillRect(float x, float y, float width, float height, float r, float
     globals.ctx.fillRect(x,y,width,height);
 }
 
+import void RequestAnimationFrameForUpdate(){
+    requestAnimationFrame(exports.Update);
+}
+
+void Update(){
+    FillRect(Random()*800, Random()*600, 40, 40, Random()*255, Random()*255, Random()*255);
+    RequestAnimationFrameForUpdate();
+}
+
 float Run(){ 
     CreateCanvas();
     FillRect(0,0,800,600,0,0,0);
@@ -34,7 +47,7 @@ float Run(){
             break;
         }
     }
-    PrintFloat(4.5);
+    RequestAnimationFrameForUpdate();
     return 0; 
 }";
         var tokenizer = new Tokenizer(code);
